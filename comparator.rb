@@ -1,8 +1,3 @@
-# TODO:
-# 1. Skip specific columns when comparing
-# 2. Show only Z_PK in new or missing and Column in different
-# 3. Reveal duplications
-
 class Comparator
   require 'sqlite3'
   require 'hashdiff'
