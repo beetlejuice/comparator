@@ -2,15 +2,23 @@ class Comparator
   require 'sqlite3'
   require 'hashdiff'
 
+  # Keys with values that may vary for identical data sets
+  MUTABLE_KEYS = ['Z_PK', 'Z_ENT', 'Z_OPT']
+
   def initialize config
     @test_db = SQLite3::Database.open config['test_db']
     @reference_db = SQLite3::Database.open config['reference_db']
     @table_to_compare = config['table']
-    @compare_key = config['compare_key']
+    @compare_key = config['compare_key'] || 'ZENTITYID'
   end
 
   def get_data db, table
     db.prepare("select * from #{table}").execute
+  end
+
+  def remove_mutable_keys record, keys
+    keys.each { |key| record.delete key }
+    record
   end
 
   def hashify_data table_data, hash_key
@@ -18,7 +26,7 @@ class Comparator
     table_data.each_hash do |record|
       hash_key_value = record[hash_key]
       key = hash_key_value.to_sym
-      record.delete 'Z_PK' # removing mutable columns 
+      record = remove_mutable_keys record, MUTABLE_KEYS
       data_hash[key] = data_hash[key].nil? ? record : [*data_hash[key]] << record
     end
     data_hash
@@ -40,18 +48,7 @@ class Comparator
       puts "Test data set is larger than reference by #{size_diff} records.\n\n"
     end 
 
-    HashDiff.diff(test_data_hash, ref_data_hash)
-
-    # new_in_test = test_data_hash.to_a - ref_data_hash.to_a
-    # missing_in_test = ref_data_hash.to_a - test_data_hash.to_a
-
-    # new_hash = Hash[*new_in_test.flatten]
-    # missing_hash = Hash[*missing_in_test.flatten]
-    # differs_hash = {}
-
-    # puts "New in test - #{new_hash}\n\n" if new_hash.size > 0
-    # puts "Missing in test - #{missing_hash}\n\n" if missing_hash.size > 0
-    # puts "Differs in test - #{differs_hash}" if differs_hash.size > 0
+    HashDiff.diff(test_data_hash, ref_data_hash, similarity: 1.0)
   end
 
   def compare_all

@@ -12,3 +12,6 @@ config = {
 cmp = Comparator.new config
 result = cmp.run
 puts result
+Dir.mkdir('log') unless File.exists?('log')
+File.open('log/result.txt', 'w') { |f| f << result }
+puts 'Comparation log stored in log/result.txt.'
