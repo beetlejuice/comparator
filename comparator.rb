@@ -3,7 +3,7 @@ class Comparator
   require 'hashdiff'
 
   # Keys with values that may vary for identical data sets
-  MUTABLE_KEYS = ['Z_PK', 'Z_ENT', 'Z_OPT']
+  MUTABLE_KEYS = ['Z_PK', 'Z_ENT', 'Z_OPT', 'ZPRODUCTFORMULARY', 'ZGROUPOFATTRIBUTES']
 
   def initialize config
     @test_db = SQLite3::Database.open config['test_db']
@@ -12,8 +12,14 @@ class Comparator
     @compare_key = config['compare_key'] || 'ZENTITYID'
   end
 
-  def get_data db, table
+  def get_data_from_table db, table
     db.prepare("select * from #{table}").execute
+  end
+
+  def get_tables db
+    tables_data = db.prepare("select name from sqlite_master where type = 'table'").execute
+    tables_array = []
+    tables_data.each_hash { |record| tables_array << record['name'] }
   end
 
   def remove_mutable_keys record, keys
@@ -33,8 +39,8 @@ class Comparator
   end
 
   def compare table
-    test_data = get_data @test_db, table
-    ref_data = get_data @reference_db, table
+    test_data = get_data_from_table @test_db, table
+    ref_data = get_data_from_table @reference_db, table
 
     test_data_hash = hashify_data test_data, @compare_key
     ref_data_hash = hashify_data ref_data, @compare_key
@@ -52,7 +58,13 @@ class Comparator
   end
 
   def compare_all
-    # comparing all tables here
+    db_result = {}
+    tables_array = get_tables @test_db
+    tables_array.each do |table|
+      table_result = compare table
+      db_result["#{table}"] = table_result
+    end
+    db_result
   end
 
   def run
