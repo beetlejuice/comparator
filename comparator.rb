@@ -3,7 +3,16 @@ class Comparator
   require 'hashdiff'
 
   # Keys with values that may vary for identical data sets
-  MUTABLE_KEYS = ['Z_PK', 'Z_ENT', 'Z_OPT', 'ZPRODUCTFORMULARY', 'ZGROUPOFATTRIBUTES']
+  MUTABLE_KEYS = ['Z_PK', 'Z_ENT', 'Z_OPT', 'ZSPECIALTY', 'ZCOMPETITORCOMMENTS', 'ZRECOMMENDATIONCOMMENTS']
+  LINKS = {'ZCAMPAIGNACTIONATTRIBUTE' => 
+              {'ZPRODUCTFORMULARY' => 'ZPRODUCTFORMULARY', 
+               'ZGROUPOFATTRIBUTES' => 'ZCAMPAIGNACTIONATTRIBUTESGROUP'},
+           'ZCAMPAIGNACTIONATTRIBUTESGROUP' =>
+              {'ZCAMPAIGNACTION' => 'ZCAMPAIGNACTION'},
+           'ZVISIT' =>
+              {'ZCONTACT' => 'ZCONTACT', 
+               'ZORGANIZATION' => 'ZORGANIZATION'}
+          }
 
   def initialize config
     @test_db = SQLite3::Database.open config['test_db']
@@ -27,12 +36,30 @@ class Comparator
     record
   end
 
-  def hashify_data table_data, hash_key
+  def provide_links table
+    LINKS[table]
+  end
+
+  def restore_links record, table
+    links = provide_links table
+    links.each do |k, v|
+      if !record[k].nil?
+        test_id = @test_db.prepare("select ZENTITYID from #{v} where Z_PK = '#{record[k]}'").execute.next[0]
+        ref_value = @reference_db.prepare("select Z_PK from #{v} where ZENTITYID = '#{test_id}'").execute.next[0]
+        record[k] = ref_value
+      end
+    end
+    record
+  end
+
+  def hashify_data table_data, hash_key, *options
+    table, is_test = options
     data_hash = {}
     table_data.each_hash do |record|
       hash_key_value = record[hash_key]
       key = hash_key_value.to_sym
       record = remove_mutable_keys record, MUTABLE_KEYS
+      record = restore_links record, table if is_test && LINKS.keys.include?(table)
       data_hash[key] = data_hash[key].nil? ? record : [*data_hash[key]] << record
     end
     data_hash
@@ -42,7 +69,7 @@ class Comparator
     test_data = get_data_from_table @test_db, table
     ref_data = get_data_from_table @reference_db, table
 
-    test_data_hash = hashify_data test_data, @compare_key
+    test_data_hash = hashify_data test_data, @compare_key, table, true
     ref_data_hash = hashify_data ref_data, @compare_key
 
     size_diff = test_data_hash.size - ref_data_hash.size
