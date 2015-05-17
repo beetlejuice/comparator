@@ -3,7 +3,7 @@ class Comparator
   require 'hashdiff'
 
   # Keys with values that may vary for identical data sets
-  MUTABLE_KEYS = ['Z_PK', 'Z_ENT', 'Z_OPT', 'ZSPECIALTY', 'ZCOMPETITORCOMMENTS', 'ZRECOMMENDATIONCOMMENTS']
+  MUTABLE_KEYS = ['Z_PK', 'Z_ENT', 'Z_OPT', 'ZSPECIALTY', 'ZCOMPETITORCOMMENTS', 'ZRECOMMENDATIONCOMMENTS', 'ZHASACTIVECAMPAIGNACTION']
   LINKS = {'ZCAMPAIGNACTIONATTRIBUTE' => 
               {'ZPRODUCTFORMULARY' => 'ZPRODUCTFORMULARY', 
                'ZGROUPOFATTRIBUTES' => 'ZCAMPAIGNACTIONATTRIBUTESGROUP'},
@@ -11,7 +11,9 @@ class Comparator
               {'ZCAMPAIGNACTION' => 'ZCAMPAIGNACTION'},
            'ZVISIT' =>
               {'ZCONTACT' => 'ZCONTACT', 
-               'ZORGANIZATION' => 'ZORGANIZATION'}
+               'ZORGANIZATION' => 'ZORGANIZATION'},
+		   'ZORGANIZATION' =>
+			  {'ZPARENT' => 'ZORGANIZATION'}
           }
 
   def initialize config
